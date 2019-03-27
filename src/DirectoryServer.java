@@ -81,7 +81,7 @@ public class DirectoryServer {
 
             //try to set up a port connection; creates a UDP and TCP thread and assigns it
             try {
-                TCPSocket = newServerSocket(port);
+                TCPSocket = new ServerSocket(port);
 
                 if (serverNum == 1) {
                     UDPSocket = new DatagramSocket(port);
@@ -185,22 +185,38 @@ public class DirectoryServer {
 
     public static class CustomUDP {
 
+        //status codes; final because they're used often
         final int statusCode200 = 200;
         final int statusCode400 = 400;
         final int statusCode404 = 404;
         final int statusCode505 = 505;
 
-        int customPort;
-        int nextPort;
-        String myIP;
-        String nextIP;
+        int customPort, nextPort;
+        String myIP, nextIP;
 
         DatagramSocket UDPSocket;
         Thread customThread;
 
-        public CustomUDP() {
+        //constructor that creates a unique UDP
+        public CustomUDP(String myIP, int port, String nextIP, int nextPort) {
+            this.myIP = myIP;
+            this.nextIP = nextIP;
+            this.nextPort = nextPort;
+            customPort = port;
 
-        }
+            try {
+                //provided the port is available, create the socket
+                UDPSocket = new DatagramSocket(port);
+            }
+            catch (Exception e) {
+                //otherwise let the user know the port is unavailable
+                System.out.println("Unavailable port");
+            }
+
+            //create and start the thread
+            customThread = new Thread(CustomRunnable);
+            customThread.start();
+        } //end of CustomUDP()
 
         Runnable CustomRunnable = new Runnable() {
             public void run() {
