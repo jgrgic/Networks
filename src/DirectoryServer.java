@@ -44,7 +44,7 @@ public class DirectoryServer {
         DatagramSocket UDPSocket;
 
         //actual DHT that we are adding content to
-        public static HashTable<String, String> imageList = new HashTable<String, String>();
+        public static Hashtable<String, String> imageList = new Hashtable<String, String>();
 
         public Server(int port, int serverNum, int nextPort, String nextIP) {
 
@@ -100,6 +100,7 @@ public class DirectoryServer {
         }
 
         //implements runnable() because instances of runTCP are to be run by a thread
+        //runs the main TCP thread
         Runnable runTCP = new Runnable() {
             public void run() {
                 System.out.println("Starting TCP thread");
@@ -218,9 +219,71 @@ public class DirectoryServer {
             customThread.start();
         } //end of CustomUDP()
 
+        //run the main thread
         Runnable CustomRunnable = new Runnable() {
             public void run() {
 
+                while(true) {
+
+                    //message, really just the file
+                    String message;
+                    byte[] data = new byte[1024];
+
+                    try {
+                        DatagramPacket packet = new DatagramPacket(data, data.length);
+                        UDPSocket.receive(packet);
+                        message = new String(packet.getData());
+                        System.out.println("Executing: " + message);
+
+                        //if the user wants to upload
+                        if (message.contains("upload")) {
+                            Scanner instruction = new Scanner(message);
+                            instruction.next();
+
+                            //gets the name of the file to upload
+                            String nameOfFile = instruction.next();
+
+                            //sends the data to the client, OK's it
+                            sendData(statusCode200 + "        ", myIP, packet.getPort());
+
+                            //update the servers with the file name and IP of the client that has it
+                            Server.imageList.put(nameOfFile, myIP);
+                        }
+                        //if the user wants to query
+                        else if (message.contains("query")) {
+                            Scanner instruction = new Scanner(message);
+                            instruction.next();
+                            String nameOfFile = instruction.next();
+
+                            //gets the IP of the server with that file
+                            String serverIP = Server.imageList.get(nameOfFile);
+
+                            //if it doesn't exist, print 404 error
+                            if (serverIP == null) {
+                                sendData(statusCode404 + "        ", myIP, packet.getPort());
+                            }
+                            //other wise, query for it and OK
+                            else {
+                                sendData(statusCode200 + " " + serverIP + "        ", myIP, packet.getPort());
+                            }
+                        }
+                        //if the user wants to exit, send to next server
+                        else if (message.contains("exit")) {
+                            Scanner instruction = new Scanner(message);
+                            message = instruction.next() + " " + myIP + " " + packet.getPort();
+
+                            //goes through the 4 servers
+                            for (int i = 0; i < 4; i++) {
+                                message = message + " " + instruction.next();
+                            }
+                            //sends the message
+                            sendToNextServer(message);
+                        }
+                    }
+                    catch (Exception e) {
+                        System.out.println("there's a problem");
+                    }
+                }
             }
         };
 
