@@ -43,8 +43,11 @@ public class DirectoryServer {
         ServerSocket TCPSocket;
         DatagramSocket UDPSocket;
 
+        ArrayList<CustomUDP> customUDPList = new ArrayList<CustomUDP>();
+
         //actual DHT that we are adding content to
         public static Hashtable<String, String> imageList = new Hashtable<String, String>();
+
 
         public Server(int port, int serverNum, int nextPort, String nextIP) {
 
@@ -100,7 +103,7 @@ public class DirectoryServer {
         }
 
         //implements runnable() because instances of runTCP are to be run by a thread
-        //runs the main TCP thread
+        //runs the main TCP thread; follows the same form as that in CustomUDP class
         Runnable runTCP = new Runnable() {
             public void run() {
                 System.out.println("Starting TCP thread");
@@ -114,9 +117,33 @@ public class DirectoryServer {
                         message = input.readUTF();
                         System.out.println("Message from other server: " + message);
 
-                        if (serverNum == 1 && message.contains("")){
-
+                        //if server number is 1, send OK message w/ data
+                        if (serverNum == 1 && message.contains("all IP")){
+                            String[] information = init(message);
+                            String newMessage = statusCode200 + " " + message + "        ";
+                            sendData(newMessage, information[0], Integer.parseInt(information[1]));
                         }
+                        //create message and send onwards to next server
+                        else if (message.contains("all IP")) {
+                            String[] information = init(message);
+                            int port;
+                            port = findUDPPort();
+                            customUDPList.add(new CustomUDP(information[0], port, nextServerIP, nextPort));
+                            message = message + " " + serverIP + " " + port;
+                            sendToNextServer(message);
+                        }
+                        //if server number is 1, send OK message w/ data
+                        else if (serverNum == 1 && message.contains("exit")) {
+                            String[] information = exit(message);
+                            message = statusCode200 + "        ";
+                            sendData(message, information[0], Integer.parseInt(information[1]));
+                        }
+                        //create message and send onwards to next server
+                        else if (message.contains("exit")) {
+                            exit(message);
+                            sendToNextServer(message);
+                        }
+                        otherPort.close();
                     }
                     catch (Exception e) {
                         System.out.println("something");
@@ -129,15 +156,58 @@ public class DirectoryServer {
             public void run() {
                 System.out.println("Starting UDP thread");
 
+                //follows the same form as that in CustomUDP class
                 while(true) {
                     String message;
+                    byte[] data = new byte[1024];
+
+                    try {
+                        DatagramPacket packet = new DatagramPacket(data, data.length);
+                        UDPSocket.receive(packet);
+                        message = new String(packet.getData());
+
+                        if (message.contains("all IP")) {
+                            int port;
+                            port = findUDPPort();
+                            customUDPList.add(new CustomUDP(packet.getAddress().getHostAddress(), port, nextServerIP, nextPort));
+                            message = "all IP" + packet.getPort() + " " + packet.getAddress().getHostAddress() + " " + serverIP + " " + port;
+                            sendToNextServer(message);
+                        }
+                    }
+                    catch (Exception e) {
+                        System.out.println("Error");
+                    }
                 }
             }
         };
 
+        //finds a the port number of some available port
         public int findUDPPort() {
 
-        }
+            //port that will be returned
+            int port = 0;
+
+            //find a new port from the start one
+            int findPort = startingPort;
+            boolean finished = false;
+
+            //while port isn't found
+            while(finished == false) {
+                //when you find one, assigned it the value
+                try {
+                    DatagramSocket tryingPort = new DatagramSocket(findPort);
+                    finished = true;
+                    tryingPort.close();
+                    break;
+                }
+                //otherwise, increment to the next port
+                catch (SocketException e) {
+                   findPort++;
+                }
+            }
+            port = findPort;
+            return port;
+        }//end of findUDPPort()
 
         //method to send data to the next available server
         public void sendToNextServer(String message) throws IOException {
@@ -175,13 +245,43 @@ public class DirectoryServer {
             UDPSocket.send(packetToBeSent);
         } //end of sendData()
 
-        public String[] exit() {
+        public String[] exit(String message) {
+            Scanner input = new Scanner(message);
+            input.next();
+            String IP = input.next();
+            int port = input.nextInt();
+            int startingPort = 0;
 
-        }
+            for (int i = 0; i < serverNum; i++) {
+                startingPort = input.nextInt();
+            }
+            for (int k = 0; k < customUDPList.size(); k++) {
+                if (customUDPList.get(k).myIP.equals(IP) && customUDPList.get(k).customPort == startingPort) {
+                    customUDPList.get(k).kill();
+                    customUDPList.remove(k);
+                    break;
+                }
+            }
+            Enumeration images = imageList.keys();
+            while (images.hasMoreElements()) {
+                String key = (String)images.nextElement();
+                if (imageList.get(key).equals(IP)) {
+                    imageList.remove(key);
+                }
+            }
+            return new String[] {IP, port + ""};
+        } //end of exit()
 
-        public String[] init() {
-
-        }
+        //initialize the next server based on the information passed in the message
+        public String[] init(String message) {
+            Scanner input = new Scanner(message);
+            for (int i = 0; i < 3; i++) {
+                input.next();
+            }
+            int port = input.nextInt();
+            String IP = input.next();
+            return new String[] {IP, port + ""};
+        }//end of init()
     }
 
     public static class CustomUDP {
