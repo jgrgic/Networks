@@ -145,6 +145,38 @@ public class PeerServer {
                                 String newFile2 = "";
                                 newFile1 = nameOfFile.substring(0, nameOfFile.indexOf(".jpg"));
                                 newFile2 = nameOfFile.substring(0, nameOfFile.indexOf(".jpg"));
+                                newFile1 = newFile1 + "___________.jpg";
+                                File badFile = new File(newFile1);
+                                badFile.createNewFile();
+                                badFile.delete();
+                                File file2 = new File(newFile2 + ".jpg");
+
+                                if (file2.exists()){
+                                    file = new File(newFile2 + ".jpg");
+                                }
+
+                                if (file.exists()) {
+                                    double fileSize = file.length();
+                                    String lastModified = getModifiedTime(file);
+                                    response = createResponse(statusCode200, timeString, lastModified, "bytes", Integer.toString((int)fileSize), connection, type);
+
+                                    byte[] responseToBytes = response.getBytes(Charset.forName("UTF-8"));
+                                    FileInputStream inputStream = null;
+                                    byte[] fileToBytes = new byte[(int)file.length()];
+
+                                    inputStream = new FileInputStream(file);
+                                    inputStream.read(fileToBytes);
+                                    inputStream.close();
+
+                                    completeArray = new byte[responseToBytes.length + fileToBytes.length];
+                                    System.arraycopy(responseToBytes, 0, completeArray, 0, responseToBytes.length);
+                                    System.arraycopy(fileToBytes, 0, completeArray, responseToBytes.length, fileToBytes.length);
+
+                                }
+                                else {
+                                    response = createResponse(statusCode404, timeString, null, null, null, connection, null);
+                                    completeArray = response.getBytes(Charset.forName("UTF-8"));
+                                }
 
                             }
                             catch (Exception e) {
