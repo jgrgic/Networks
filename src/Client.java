@@ -13,11 +13,11 @@ public class Client {
         Thread mainThread;
 
         //port of the client server; always on
-        peerServerPort = 0;
+        peerServerPort = 20310;
         //port of first server in DHT
-        firstServerPort = 0;
+        firstServerPort = 20310;
         //IP of first server in DHT
-        firstServerIP = " ";
+        firstServerIP = "10.17.0.1";
 
         mainThread = new Thread(mainRunnable);
         mainThread.start();
@@ -132,9 +132,26 @@ public class Client {
 
         //initialize client
         public void init() throws Exception {
+            String message;
+            String code;
+            sendData("all IP", serverIPs[0], serverPortNumbers[0]);
+            message = recieveData();
+            Scanner scanner = new Scanner(message);
+            code = scanner.next();
 
+            for (int i = 0; i < 5; i++) {
+                scanner.next();
+            }
 
-        }
+            if (code.equals("200")) {
+                System.out.println("Client as server created");
+            }
+
+            for (int i = 0; i < 4; i++) {
+                serverIPs[i] = scanner.next();
+                serverPortNumbers[i] = Integer.parseInt(scanner.next());
+            }
+        }//end of init()
 
         //method to upload data to servers
         //serverNum is which server we are uploading to, nameOfFile is what we want to name it
@@ -150,6 +167,41 @@ public class Client {
 
         //exit from network
         public void exit() throws Exception {
+
+        }
+
+        //method that sends data to server
+        //copy of the one found in DirectoryServer
+        public void sendData(String message, String serverIP, int portNumber) throws IOException {
+            byte[] dataToBeSent = new byte[1024];
+            dataToBeSent = message.getBytes();
+            InetAddress address = InetAddress.getByName(serverIP);
+            DatagramPacket packet = new DatagramPacket(dataToBeSent, dataToBeSent.length, address, portNumber);
+            UDPSocket.send(packet);
+        }//end of sendData()
+
+        //method that receives data
+        //copy of the one found in DirectoryServer
+        public String receiveData() throws IOException {
+            byte[] receivedData = new byte[1024];
+            DatagramPacket packet = new DatagramPacket(receivedData, receivedData.length);
+            UDPSocket.receive(packet);
+            return new String(packet.getData());
+        } //end of receiveData()
+
+        public String connectToPeer() {
+
+        }
+
+        public String connectToCustom() {
+
+        }
+
+        public String getResponse() {
+
+        }
+
+        public String createResponse() {
 
         }
 
