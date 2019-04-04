@@ -9,11 +9,11 @@ public class DirectoryServer {
 
         //initializes a server with a port, a unique identifier, location of the next port in DHT
         //and the next servers IP
-        int port = 20310;
+        int port = Integer.parseInt(args[0]);
         //user inputs which server number this will be
-        int serverNum = Integer.parseInt(args[0]);
-        int nextPort = 20310;
-        String nextIP;
+        int serverNum = Integer.parseInt(args[1]);
+        int nextPort = Integer.parseInt(args[2]);
+        String nextIP = args[3];
         Server server = new Server(port, serverNum, nextPort, nextIP);
     }
 
@@ -175,7 +175,7 @@ public class DirectoryServer {
                         }
                     }
                     catch (Exception e) {
-                        System.out.println("Error");
+                        System.out.println("You have to have at least one server you fool!");
                     }
                 }
             }
